@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AR AI Friend</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700&display=swap" rel="stylesheet">
+  <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js/aframe/build/aframe-ar.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: linear-gradient(135deg,#4f84ff 0%, #dca7ff 100%);
+      font-family: 'Nunito', sans-serif;
+    }
+    #ui {
+      position: fixed;
+      width: 100vw;
+      left: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      z-index: 7;
+      background: rgba(255,255,255,0.08);
+      padding-top: 20px;
+      padding-bottom: 18px;
+      box-shadow: 0 -6px 32px #2223;
+    }
+    #mic {
+      background: linear-gradient(135deg,#36d1c4,#5b86e5);
+      color: white;
+      border: none;
+      font-size: 2.1rem;
+      border-radius: 100px;
+      width: 80px;
+      height: 80px;
+      box-shadow: 0 6px 32px #2edab233;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: box-shadow 0.15s, background 0.15s;
+      cursor: pointer;
+      outline: none;
+      margin-bottom: 7px;
+    }
+    #mic.recording {
+      background:linear-gradient(135deg,#ea447a,#ff6c33);
+      box-shadow: 0 6px 32px #ff4a6380;
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 #ff4a6380; }
+      70% { box-shadow: 0 0 0 20px #ff4a6300; }
+      100% { box-shadow: 0 0 0 0 #ff4a6300; }
+    }
+    #status, #ai-response {
+      color: #fff;
+      background:rgba(0,0,0,0.23);
+      border-radius:13px;
+      padding:3px 15px 4px;
+      font-size:1.15rem;
+      max-width:80vw;
+      margin:auto;
+      word-break: break-word;
+    }
+    #ai-response {
+      font-size:1.26rem;
+      color:#ffe47a;
+      margin-bottom:8px;
+    }
+  </style>
+</head>
+<body>
+
+<a-scene embedded arjs="sourceType:webcam;">
+  <a-marker preset="hiro">
+    <a-entity id="idle" gltf-model="friend_idle.glb" scale="0.5 0.5 0.5" rotation="0 180 0" visible="true" animation-mixer></a-entity>
+    <a-entity id="talk" gltf-model="friend_talk.glb" scale="0.5 0.5 0.5" rotation="0 180 0" visible="false" animation-mixer></a-entity>
+  </a-marker>
+  <a-entity camera></a-entity>
+</a-scene>
+
+<div id="ui">
+  <div id="ai-response"></div>
+  <button id="mic" onclick="startListening()">
+    <span id="mic-emoji">🎤</span>
+  </button>
+  <div id="status"></div>
+</div>
+
+<script>
+const micBtn = document.getElementById('mic');
+const micEmoji = document.getElementById('mic-emoji');
+const statusEl = document.getElementById('status');
+const aiResponseEl = document.getElementById('ai-response');
+const idle = document.getElementById('idle');
+const talk = document.getElementById('talk');
+
+function switchToIdle() {
+  idle.setAttribute('visible', 'true');
+  talk.setAttribute('visible', 'false');
+}
+function switchToTalk() {
+  idle.setAttribute('visible', 'false');
+  talk.setAttribute('visible', 'true');
+}
+
+function speakWithTalkAnim(text, onEnd) {
+  switchToTalk();
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.rate = 0.92;
+  msg.pitch = 1.0;
+  msg.onend = () => {
+    switchToIdle();
+    if (onEnd) onEnd();
+  };
+  window.speechSynthesis.cancel(); // Always stop before starting
+  window.speechSynthesis.speak(msg);
+}
+
+function startListening() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('Sorry! Speech recognition not available.');
+    return;
+  }
+  micBtn.classList.add('recording');
+  micEmoji.innerText = '🔴';
+  statusEl.innerText = "Listening...";
+  aiResponseEl.innerText = '';
+
+  const recog = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+  recog.lang = "en-US";
+  recog.interimResults = false;
+  recog.start();
+
+  recog.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    statusEl.innerText = "You: " + text;
+    micEmoji.innerText = '⏳';
+    micBtn.classList.remove('recording');
+    askAI(text);
+  };
+  recog.onerror = (e) => {
+    statusEl.innerText = 'Mic error. Try again.';
+    micEmoji.innerText = '🎤';
+    micBtn.classList.remove('recording');
+  };
+  recog.onend = () => {
+    if (micBtn.classList.contains('recording')) {
+      micBtn.classList.remove('recording');
+      micEmoji.innerText = '🎤';
+    }
+  };
+}
+
+async function askAI(text) {
+  statusEl.innerText = "Thinking...";
+  aiResponseEl.innerText = '';
+  try {
+    const res = await fetch("http://127.0.0.1:8000/ask", {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({question:text})
+    });
+    const data = await res.json();
+    // Animate talking for each word until done
+    displayTalkWithWords(data.answer);
+  } catch (e) {
+    statusEl.innerText = 'Error!';
+    aiResponseEl.innerText = '';
+    switchToIdle();
+  }
+}
+
+function displayTalkWithWords(answer) {
+  let words = answer.split(/\s+/);
+  aiResponseEl.innerText = '';
+  let cur = 0;
+
+  function speakNextChunk() {
+    if (cur >= words.length) {
+      switchToIdle();
+      statusEl.innerText = "";
+      return;
+    }
+    // Speak next N (6) words for smoother animation
+    let chunk = words.slice(cur, cur+6).join(' ');
+    aiResponseEl.innerText += chunk + ' ';
+    speakWithTalkAnim(chunk, speakNextChunk);
+    cur += 6;
+  }
+  switchToTalk();
+  speakNextChunk();
+}
+
+switchToIdle();
+</script>
+</body>
+</html>
