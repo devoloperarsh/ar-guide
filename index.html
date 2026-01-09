@@ -94,6 +94,10 @@
   <a-entity camera></a-entity>
 </a-scene>
 
+<div id="speech-overlay" style="position:fixed;z-index:15;left:50%;bottom:20vw;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:#fff;padding:3vw 5vw;border-radius:3vw;font-size:4.5vw;max-width:90vw;text-align:center;display:none;word-break:break-word;box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+  <div id="speech-text">Listening...</div>
+</div>
+
 <div id="button-panel" style="position:fixed;z-index:20;left:50%;bottom:4vw;transform:translateX(-50%);display:flex;flex-direction:row;gap:6vw;align-items:end;">
     <button id="zoomInBtn" style="
       background:linear-gradient(135deg,#54de7c,#1e92fa);
@@ -269,36 +273,77 @@ function startListening() {
   }
   micBtn.classList.add('recording');
   micEmoji.innerText = '🔴';
-  statusEl.innerText = "Listening...";
   aiResponseEl.innerText = '';
+  
+  // Show speech overlay
+  const speechOverlay = document.getElementById('speech-overlay');
+  const speechText = document.getElementById('speech-text');
+  speechOverlay.style.display = 'block';
+  speechText.innerText = 'Listening...';
 
   const recog = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recog.lang = "en-US";
-  recog.interimResults = false;
+  recog.interimResults = true; // Enable interim results to show real-time text
+  recog.continuous = false;
   recog.start();
 
   recog.onresult = (e) => {
-    const text = e.results[0][0].transcript;
-    statusEl.innerText = "You: " + text;
-    micEmoji.innerText = '⏳';
-    micBtn.classList.remove('recording');
-    askAI(text);
+    let interimTranscript = '';
+    let finalTranscript = '';
+    
+    // Process all results
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const transcript = e.results[i][0].transcript;
+      if (e.results[i].isFinal) {
+        finalTranscript += transcript + ' ';
+      } else {
+        interimTranscript += transcript;
+      }
+    }
+    
+    // Show interim results in real-time
+    if (interimTranscript) {
+      speechText.innerText = interimTranscript;
+    }
+    
+    // When final result is ready
+    if (finalTranscript) {
+      const finalText = finalTranscript.trim();
+      speechText.innerText = 'You said: ' + finalText;
+      micEmoji.innerText = '⏳';
+      micBtn.classList.remove('recording');
+      
+      // Hide overlay after a moment and send to AI
+      setTimeout(() => {
+        speechOverlay.style.display = 'none';
+        askAI(finalText);
+      }, 1000);
+    }
   };
+  
   recog.onerror = (e) => {
-    statusEl.innerText = 'Mic error. Try again.';
+    speechText.innerText = 'Mic error. Try again.';
     micEmoji.innerText = '🎤';
     micBtn.classList.remove('recording');
+    setTimeout(() => {
+      speechOverlay.style.display = 'none';
+    }, 2000);
   };
+  
   recog.onend = () => {
     if (micBtn.classList.contains('recording')) {
       micBtn.classList.remove('recording');
       micEmoji.innerText = '🎤';
+      speechOverlay.style.display = 'none';
     }
   };
 }
 
 async function askAI(text) {
-  statusEl.innerText = "Thinking...";
+  const speechOverlay = document.getElementById('speech-overlay');
+  const speechText = document.getElementById('speech-text');
+  speechOverlay.style.display = 'block';
+  speechText.innerText = 'Thinking...';
   aiResponseEl.innerText = '';
   // Make sure avatar is in idle state while waiting for AI response
   switchToIdle();
@@ -309,10 +354,15 @@ async function askAI(text) {
       body: JSON.stringify({question:text})
     });
     const data = await res.json();
+    // Hide overlay and start speaking
+    speechOverlay.style.display = 'none';
     // Only switch to talk animation when speech actually starts (handled in speakWithTalkAnim)
     displayTalkWithWords(data.answer);
   } catch (e) {
-    statusEl.innerText = 'Error!';
+    speechText.innerText = 'Error connecting to AI!';
+    setTimeout(() => {
+      speechOverlay.style.display = 'none';
+    }, 2000);
     aiResponseEl.innerText = '';
     switchToIdle();
   }
@@ -326,7 +376,6 @@ function displayTalkWithWords(answer) {
   function speakNextChunk() {
     if (cur >= words.length) {
       switchToIdle();
-      statusEl.innerText = "";
       return;
     }
     // Speak next N (6) words for smoother animation
@@ -409,5 +458,3 @@ setInterval(() => {
 </script>
 </body>
 </html>
-
-
