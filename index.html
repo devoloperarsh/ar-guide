@@ -226,7 +226,7 @@ async function askAI(text) {
   statusEl.innerText = "Thinking...";
   aiResponseEl.innerText = '';
   try {
-    const res = await fetch("http://127.0.0.1:8000/ask", {
+    const res = await fetch("/.netlify/functions/ask", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
       body: JSON.stringify({question:text})
@@ -306,3 +306,4 @@ switchToIdle();
 </script>
 </body>
 </html>
+
