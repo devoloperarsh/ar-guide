@@ -86,74 +86,121 @@
 </head>
 <body>
 
-<a-scene arjs="sourceType: webcam;" vr-mode-ui="enabled: false" renderer="logarithmicDepthBuffer: true;">
-  <a-marker preset="hiro" id="ar-marker">
-    <a-entity id="idle" gltf-model="friend_idle.glb" scale="0.5 0.5 0.5" rotation="0 180 0" visible="true" animation-mixer persistent-avatar></a-entity>
-    <a-entity id="talk" gltf-model="friend_talk.glb" scale="0.5 0.5 0.5" rotation="0 180 0" visible="false" animation-mixer persistent-avatar></a-entity>
+<a-scene arjs="sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3; cameraParametersUrl: https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/camera_para.dat; maxDetectionRate: 60; canvasWidth: 1280; canvasHeight: 720;" vr-mode-ui="enabled: false" renderer="logarithmicDepthBuffer: true;">
+  <a-marker preset="hiro" id="ar-marker" size="1">
+    <a-entity id="idle" gltf-model="friend_idle.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="true" animation-mixer persistent-avatar></a-entity>
+    <a-entity id="talk" gltf-model="friend_talk.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
   </a-marker>
   <a-entity camera></a-entity>
 </a-scene>
 
-<button id="mic" onclick="startListening()" style="
-  position: fixed;
-  left: 50%;
-  bottom: 4vw;
-  transform: translateX(-50%);
-  z-index: 10;
-  background: linear-gradient(135deg,#36d1c4,#5b86e5);
-  color: white;
-  border: none;
-  font-size: 7vw;
-  border-radius: 50vw;
-  width: 18vw;
-  height: 18vw;
-  max-width: 90px;
-  max-height: 90px;
-  min-width: 52px;
-  min-height: 52px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: box-shadow 0.15s, background 0.15s;
-  cursor: pointer;
-  outline: none;
-  touch-action: manipulation;
-">
-  <span id="mic-emoji">🎤</span>
-</button>
+<div id="button-panel" style="position:fixed;z-index:20;left:50%;bottom:4vw;transform:translateX(-50%);display:flex;flex-direction:row;gap:6vw;align-items:end;">
+    <button id="zoomInBtn" style="
+      background:linear-gradient(135deg,#54de7c,#1e92fa);
+      color:#fff;font-size:7vw;
+      border:none;border-radius:50vw;width:13vw;height:13vw;max-width:60px;max-height:60px;min-width:42px;min-height:42px;
+      display:flex;align-items:center;justify-content:center;box-shadow:0 2px 16px #2edab233;cursor:pointer;outline:none;touch-action:manipulation;">
+      ＋
+    </button>
+    <button id="mic" onclick="startListening()" style="
+      background: linear-gradient(135deg,#36d1c4,#5b86e5);
+      color: white;
+      border: none;
+      font-size: 7vw;
+      border-radius: 50vw;
+      width: 18vw;
+      height: 18vw;
+      max-width: 90px;
+      max-height: 90px;
+      min-width: 52px;
+      min-height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: box-shadow 0.15s, background 0.15s;
+      cursor: pointer;
+      outline: none;
+      touch-action: manipulation;
+    "><span id="mic-emoji">🎤</span></button>
+    <button id="zoomOutBtn" style="
+      background:linear-gradient(135deg,#fc7e4f,#ff206e);
+      color:#fff;font-size:7vw;
+      border:none;border-radius:50vw;width:13vw;height:13vw;max-width:60px;max-height:60px;min-width:42px;min-height:42px;
+      display:flex;align-items:center;justify-content:center;box-shadow:0 2px 16px #ff206e33;cursor:pointer;outline:none;touch-action:manipulation;">
+      －
+    </button>
+</div>
 
 <script>
 AFRAME.registerComponent('persistent-avatar', {
   init: function () {
     this.placed = false;
     this.marker = this.el.parentEl;
+    this.dwellTimeout = null;
+    this.dwellTimer = 0;
+    this.seen = false;
     const avatar = this.el;
     // Helper: move this entity to world root at given world transform
     this.placeInWorld = (pos, rot, scale) => {
       const scene = avatar.sceneEl;
+      // Preserve current visibility state
+      const wasVisible = avatar.getAttribute('visible');
       avatar.object3D.position.copy(pos);
       avatar.object3D.rotation.copy(rot);
       if (scale) avatar.object3D.scale.copy(scale);
       scene.appendChild(avatar);
-      avatar.setAttribute('persistent', 'true'); // Mark as persistent
-      avatar.setAttribute('visible', 'true');
+      avatar.setAttribute('persistent', 'true');
+      // Keep original visibility state (idle=true, talk=false)
+      avatar.setAttribute('visible', wasVisible !== false);
+      // Only show label once (from idle entity)
+      if (avatar.id === 'idle') {
+        showConnectedLabel(pos);
+      }
+    };
+    // Start checking for dwell
+    this.dwellTick = () => {
+      if (this.placed) return;
+      if (this.seen) {
+        this.dwellTimer += 0.2;
+        if (this.dwellTimer >= 5) {
+          // Place and lock avatar
+          let worldPos = new THREE.Vector3();
+          let worldRot = new THREE.Euler();
+          let worldScale = new THREE.Vector3();
+          avatar.object3D.getWorldPosition(worldPos);
+          avatar.object3D.getWorldQuaternion().toEuler(worldRot);
+          avatar.object3D.getWorldScale(worldScale);
+          this.placeInWorld(worldPos, worldRot, worldScale);
+          if(this.marker) this.marker.setAttribute('visible', 'false');
+          this.placed = true;
+        }
+      } else {
+        this.dwellTimer = 0;
+      }
+      setTimeout(this.dwellTick, 200);
     };
     this.marker.addEventListener('markerFound', () => {
       if (this.placed) return;
-      this.placed = true;
-      // World transform
-      let worldPos = new THREE.Vector3();
-      let worldRot = new THREE.Euler();
-      let worldScale = new THREE.Vector3();
-      avatar.object3D.getWorldPosition(worldPos);
-      avatar.object3D.getWorldQuaternion().toEuler(worldRot);
-      avatar.object3D.getWorldScale(worldScale);
-      this.placeInWorld(worldPos, worldRot, worldScale);
-      // Also hide the marker so it doesn't re-trigger
-      if(this.marker) this.marker.setAttribute('visible', 'false');
+      this.seen = true;
     });
+    this.marker.addEventListener('markerLost', () => {
+      if (!this.placed) this.seen = false;
+    });
+    this.dwellTick();
   }
 });
+
+// Add floating label for 'Avatar Connected!'
+function showConnectedLabel(pos3) {
+  let scene = document.querySelector('a-scene');
+  let label = document.createElement('a-entity');
+  label.setAttribute('position', `${pos3.x} ${pos3.y+0.6} ${pos3.z}`);
+  label.setAttribute('text', "value:Avatar Connected!; align:center; color:#0fc; width:4");
+  label.setAttribute('visible', 'true');
+  scene.appendChild(label);
+  setTimeout(()=>{scene.removeChild(label);}, 2000);
+}
+
 
 const micBtn = document.getElementById('mic');
 const micEmoji = document.getElementById('mic-emoji');
@@ -163,26 +210,54 @@ const idle = document.getElementById('idle');
 const talk = document.getElementById('talk');
 
 function switchToIdle() {
-  idle.setAttribute('visible', 'true');
-  talk.setAttribute('visible', 'false');
+  if (idle) {
+    idle.setAttribute('visible', 'true');
+    if (idle.object3D) idle.object3D.visible = true;
+  }
+  if (talk) {
+    talk.setAttribute('visible', 'false');
+    if (talk.object3D) talk.object3D.visible = false;
+  }
 }
 function switchToTalk() {
-  idle.setAttribute('visible', 'false');
-  talk.setAttribute('visible', 'true');
+  if (idle) {
+    idle.setAttribute('visible', 'false');
+    if (idle.object3D) idle.object3D.visible = false;
+  }
+  if (talk) {
+    talk.setAttribute('visible', 'true');
+    if (talk.object3D) talk.object3D.visible = true;
+  }
 }
 
 function speakWithTalkAnim(text, onEnd) {
-  switchToTalk();
+  // Ensure we start in idle state
+  switchToIdle();
+  isSpeaking = false;
+  
   const msg = new SpeechSynthesisUtterance(text);
   msg.rate = 0.92;
   msg.pitch = 1.0;
+  
   msg.onstart = () => {
+    // Only switch to talk animation when speech actually starts
+    isSpeaking = true;
     switchToTalk();
   };
+  
   msg.onend = () => {
+    // Switch back to idle when speech ends
+    isSpeaking = false;
     switchToIdle();
     if (onEnd) onEnd();
   };
+  
+  msg.onerror = () => {
+    // If speech fails, stay in idle
+    isSpeaking = false;
+    switchToIdle();
+  };
+  
   window.speechSynthesis.cancel(); // Always stop before starting
   window.speechSynthesis.speak(msg);
 }
@@ -225,6 +300,8 @@ function startListening() {
 async function askAI(text) {
   statusEl.innerText = "Thinking...";
   aiResponseEl.innerText = '';
+  // Make sure avatar is in idle state while waiting for AI response
+  switchToIdle();
   try {
     const res = await fetch("/.netlify/functions/ask", {
       method: "POST",
@@ -232,7 +309,7 @@ async function askAI(text) {
       body: JSON.stringify({question:text})
     });
     const data = await res.json();
-    // Animate talking for each word until done
+    // Only switch to talk animation when speech actually starts (handled in speakWithTalkAnim)
     displayTalkWithWords(data.answer);
   } catch (e) {
     statusEl.innerText = 'Error!';
@@ -258,11 +335,23 @@ function displayTalkWithWords(answer) {
     speakWithTalkAnim(chunk, speakNextChunk);
     cur += 6;
   }
-  switchToTalk();
+  // Don't switch to talk here - wait for speech to actually start
+  // Make sure we're in idle state while waiting
+  switchToIdle();
   speakNextChunk();
 }
 
+// Initialize: ensure idle is visible and talk is hidden
 switchToIdle();
+
+// Add periodic check to ensure idle is default when not speaking
+let isSpeaking = false;
+setInterval(() => {
+  if (!isSpeaking && window.speechSynthesis && !window.speechSynthesis.speaking) {
+    switchToIdle();
+  }
+}, 500);
+
 // --- Pinch & Rotate gesture support for persistent avatars ---
 (function() {
   // Attach events to both idle and talk avatars
@@ -303,7 +392,22 @@ switchToIdle();
     });
   });
 })();
+// Zoom in / out button functionality
+(function() {
+  function adjustScale(factor) {
+    ['idle','talk'].forEach(function(id) {
+      let el = document.getElementById(id);
+      let scaleVec = el.object3D.scale;
+      let newScale = Math.max(0.1, Math.min(3, scaleVec.x * factor));
+      el.object3D.scale.set(newScale, newScale, newScale);
+      el.setAttribute('scale', `${newScale} ${newScale} ${newScale}`);
+    });
+  }
+  document.getElementById('zoomInBtn').onclick = function(e) { adjustScale(1.15); }
+  document.getElementById('zoomOutBtn').onclick = function(e) { adjustScale(0.85); }
+})();
 </script>
 </body>
 </html>
+
 
