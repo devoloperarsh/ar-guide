@@ -14,7 +14,7 @@
       background: linear-gradient(135deg,#4f84ff 0%, #dca7ff 100%);
       font-family: 'Nunito', sans-serif;
     }
-    #ui {
+    /* #ui removed for single mic button only */ #ui {
       position: fixed;
       width: 100vw;
       max-width: 100vw;
@@ -86,23 +86,75 @@
 </head>
 <body>
 
-<a-scene embedded arjs="sourceType: webcam; sourceWidth: 1280; sourceHeight: 720; displayWidth: 1280; displayHeight: 720;" vr-mode-ui="enabled: false" renderer="logarithmicDepthBuffer: true;">
-  <a-marker preset="hiro">
-    <a-entity id="idle" gltf-model="friend_idle.glb" scale="0.5 0.5 0.5" rotation="0 180 0" visible="true" animation-mixer></a-entity>
-    <a-entity id="talk" gltf-model="friend_talk.glb" scale="0.5 0.5 0.5" rotation="0 180 0" visible="false" animation-mixer></a-entity>
+<a-scene arjs="sourceType: webcam;" vr-mode-ui="enabled: false" renderer="logarithmicDepthBuffer: true;">
+  <a-marker preset="hiro" id="ar-marker">
+    <a-entity id="idle" gltf-model="friend_idle.glb" scale="0.5 0.5 0.5" rotation="0 180 0" visible="true" animation-mixer persistent-avatar></a-entity>
+    <a-entity id="talk" gltf-model="friend_talk.glb" scale="0.5 0.5 0.5" rotation="0 180 0" visible="false" animation-mixer persistent-avatar></a-entity>
   </a-marker>
   <a-entity camera></a-entity>
 </a-scene>
 
-<div id="ui">
-  <div id="ai-response"></div>
-  <button id="mic" onclick="startListening()">
-    <span id="mic-emoji">🎤</span>
-  </button>
-  <div id="status"></div>
-</div>
+<button id="mic" onclick="startListening()" style="
+  position: fixed;
+  left: 50%;
+  bottom: 4vw;
+  transform: translateX(-50%);
+  z-index: 10;
+  background: linear-gradient(135deg,#36d1c4,#5b86e5);
+  color: white;
+  border: none;
+  font-size: 7vw;
+  border-radius: 50vw;
+  width: 18vw;
+  height: 18vw;
+  max-width: 90px;
+  max-height: 90px;
+  min-width: 52px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: box-shadow 0.15s, background 0.15s;
+  cursor: pointer;
+  outline: none;
+  touch-action: manipulation;
+">
+  <span id="mic-emoji">🎤</span>
+</button>
 
 <script>
+AFRAME.registerComponent('persistent-avatar', {
+  init: function () {
+    this.placed = false;
+    this.marker = this.el.parentEl;
+    const avatar = this.el;
+    // Helper: move this entity to world root at given world transform
+    this.placeInWorld = (pos, rot, scale) => {
+      const scene = avatar.sceneEl;
+      avatar.object3D.position.copy(pos);
+      avatar.object3D.rotation.copy(rot);
+      if (scale) avatar.object3D.scale.copy(scale);
+      scene.appendChild(avatar);
+      avatar.setAttribute('persistent', 'true'); // Mark as persistent
+      avatar.setAttribute('visible', 'true');
+    };
+    this.marker.addEventListener('markerFound', () => {
+      if (this.placed) return;
+      this.placed = true;
+      // World transform
+      let worldPos = new THREE.Vector3();
+      let worldRot = new THREE.Euler();
+      let worldScale = new THREE.Vector3();
+      avatar.object3D.getWorldPosition(worldPos);
+      avatar.object3D.getWorldQuaternion().toEuler(worldRot);
+      avatar.object3D.getWorldScale(worldScale);
+      this.placeInWorld(worldPos, worldRot, worldScale);
+      // Also hide the marker so it doesn't re-trigger
+      if(this.marker) this.marker.setAttribute('visible', 'false');
+    });
+  }
+});
+
 const micBtn = document.getElementById('mic');
 const micEmoji = document.getElementById('mic-emoji');
 const statusEl = document.getElementById('status');
@@ -211,7 +263,46 @@ function displayTalkWithWords(answer) {
 }
 
 switchToIdle();
+// --- Pinch & Rotate gesture support for persistent avatars ---
+(function() {
+  // Attach events to both idle and talk avatars
+  ['idle','talk'].forEach(function(id) {
+    let el = document.getElementById(id);
+    let startDist = 0, startScale = 1, startRot = 0, baseRot = 0;
+    el.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 2) {
+        startDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        startScale = el.object3D.scale.x;
+        startRot = Math.atan2(
+          e.touches[1].clientY - e.touches[0].clientY,
+          e.touches[1].clientX - e.touches[0].clientX
+        );
+        baseRot = el.object3D.rotation.y;
+      }
+    });
+    el.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        const curDist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        let scale = Math.max(0.1, Math.min(3, startScale * (curDist / startDist)));
+        el.setAttribute('scale', `${scale} ${scale} ${scale}`);
+        const curRot = Math.atan2(
+          e.touches[1].clientY - e.touches[0].clientY,
+          e.touches[1].clientX - e.touches[0].clientX
+        );
+        let deltaRot = curRot - startRot;
+        if (deltaRot > Math.PI) deltaRot -= 2 * Math.PI;
+        if (deltaRot < -Math.PI) deltaRot += 2 * Math.PI;
+        el.object3D.rotation.y = baseRot + deltaRot;
+      }
+    });
+  });
+})();
 </script>
 </body>
 </html>
-
