@@ -57,13 +57,14 @@
     }
     #mic.recording {
       background:linear-gradient(135deg,#ea447a,#ff6c33);
-      box-shadow: 0 6px 32px #ff4a6380;
-      animation: pulse 1s infinite;
+      box-shadow: 0 8px 30px rgba(234,68,122,0.7);
+      animation: pulse 1.2s infinite;
+      transform: scale(1.05);
     }
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 #ff4a6380; }
-      70% { box-shadow: 0 0 0 20px #ff4a6300; }
-      100% { box-shadow: 0 0 0 0 #ff4a6300; }
+      0% { box-shadow: 0 8px 30px rgba(234,68,122,0.7), 0 0 0 0 rgba(234,68,122,0.4); }
+      50% { box-shadow: 0 8px 30px rgba(234,68,122,0.7), 0 0 0 15px rgba(234,68,122,0); }
+      100% { box-shadow: 0 8px 30px rgba(234,68,122,0.7), 0 0 0 0 rgba(234,68,122,0); }
     }
     #status, #ai-response {
       color: #fff;
@@ -88,49 +89,71 @@
 
 <a-scene arjs="sourceType: webcam; detectionMode: mono_and_matrix; matrixCodeType: 3x3; cameraParametersUrl: https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/camera_para.dat; maxDetectionRate: 60; canvasWidth: 1280; canvasHeight: 720;" vr-mode-ui="enabled: false" renderer="logarithmicDepthBuffer: true;">
   <a-marker preset="hiro" id="ar-marker" size="1">
-    <a-entity id="idle" gltf-model="friend_idle.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="true" animation-mixer persistent-avatar></a-entity>
-    <a-entity id="talk" gltf-model="friend_talk.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <!-- Breathing animations (default idle) -->
+    <a-entity id="breathing1" gltf-model="breathing1.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <a-entity id="breathing2" gltf-model="breathing2.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <!-- Talking animations -->
+    <a-entity id="talking1" gltf-model="talking1.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <a-entity id="talking2" gltf-model="talking2.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <!-- Dance animations -->
+    <a-entity id="dance1" gltf-model="dance1.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <a-entity id="dance2" gltf-model="dance2.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <a-entity id="dance3" gltf-model="dance3.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <!-- Fight/Angry animations -->
+    <a-entity id="fight1" gltf-model="fight1.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <a-entity id="fight2" gltf-model="fight2.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <!-- Emotion animations -->
+    <a-entity id="happy" gltf-model="happy.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <a-entity id="laughing" gltf-model="laughing.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <a-entity id="sad" gltf-model="sad.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <!-- Action animations -->
+    <a-entity id="sitting" gltf-model="sitting.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
+    <a-entity id="sing" gltf-model="sing.glb" scale="0.5 0.5 0.5" rotation="0 0 0" visible="false" animation-mixer persistent-avatar></a-entity>
   </a-marker>
   <a-entity camera></a-entity>
 </a-scene>
 
-<div id="speech-overlay" style="position:fixed;z-index:15;left:50%;bottom:20vw;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:#fff;padding:3vw 5vw;border-radius:3vw;font-size:4.5vw;max-width:90vw;text-align:center;display:none;word-break:break-word;box-shadow:0 4px 20px rgba(0,0,0,0.5);">
-  <div id="speech-text">Listening...</div>
+<div id="speech-overlay" style="position:fixed;z-index:15;left:50%;bottom:2vw;transform:translateX(-50%);background:rgba(0,0,0,0.75);color:#fff;padding:1vw 2.5vw;border-radius:1vw;font-size:2.2vw;text-align:center;display:none;word-break:break-word;box-shadow:0 2px 8px rgba(0,0,0,0.6);max-width:85vw;backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,0.1);">
+  <div id="speech-text" style="font-weight:400;letter-spacing:0.5px;">Listening...</div>
 </div>
 
-<div id="button-panel" style="position:fixed;z-index:20;left:50%;bottom:4vw;transform:translateX(-50%);display:flex;flex-direction:row;gap:6vw;align-items:end;">
+<div id="button-panel" style="position:fixed;z-index:20;right:3vw;bottom:50%;transform:translateY(50%);display:flex;flex-direction:column;gap:3vw;align-items:center;">
     <button id="zoomInBtn" style="
       background:linear-gradient(135deg,#54de7c,#1e92fa);
-      color:#fff;font-size:7vw;
-      border:none;border-radius:50vw;width:13vw;height:13vw;max-width:60px;max-height:60px;min-width:42px;min-height:42px;
-      display:flex;align-items:center;justify-content:center;box-shadow:0 2px 16px #2edab233;cursor:pointer;outline:none;touch-action:manipulation;">
+      color:#fff;font-size:5.5vw;font-weight:600;
+      border:none;border-radius:50%;width:12vw;height:12vw;max-width:56px;max-height:56px;min-width:48px;min-height:48px;
+      display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(84,222,124,0.4);cursor:pointer;outline:none;touch-action:manipulation;transition:all 0.2s;backdrop-filter:blur(10px);
+    " onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 6px 25px rgba(84,222,124,0.6)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 20px rgba(84,222,124,0.4)'">
       ＋
     </button>
     <button id="mic" onclick="startListening()" style="
       background: linear-gradient(135deg,#36d1c4,#5b86e5);
       color: white;
       border: none;
-      font-size: 7vw;
-      border-radius: 50vw;
-      width: 18vw;
-      height: 18vw;
-      max-width: 90px;
-      max-height: 90px;
-      min-width: 52px;
-      min-height: 52px;
+      font-size: 6vw;
+      border-radius: 50%;
+      width: 16vw;
+      height: 16vw;
+      max-width: 72px;
+      max-height: 72px;
+      min-width: 56px;
+      min-height: 56px;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: box-shadow 0.15s, background 0.15s;
+      transition: all 0.2s;
       cursor: pointer;
       outline: none;
       touch-action: manipulation;
-    "><span id="mic-emoji">🎤</span></button>
+      box-shadow: 0 6px 25px rgba(54,209,196,0.5);
+      backdrop-filter: blur(10px);
+    " onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 8px 30px rgba(54,209,196,0.7)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 6px 25px rgba(54,209,196,0.5)'"><span id="mic-emoji">🎤</span></button>
     <button id="zoomOutBtn" style="
       background:linear-gradient(135deg,#fc7e4f,#ff206e);
-      color:#fff;font-size:7vw;
-      border:none;border-radius:50vw;width:13vw;height:13vw;max-width:60px;max-height:60px;min-width:42px;min-height:42px;
-      display:flex;align-items:center;justify-content:center;box-shadow:0 2px 16px #ff206e33;cursor:pointer;outline:none;touch-action:manipulation;">
+      color:#fff;font-size:5.5vw;font-weight:600;
+      border:none;border-radius:50%;width:12vw;height:12vw;max-width:56px;max-height:56px;min-width:48px;min-height:48px;
+      display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(252,126,79,0.4);cursor:pointer;outline:none;touch-action:manipulation;transition:all 0.2s;backdrop-filter:blur(10px);
+    " onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 6px 25px rgba(252,126,79,0.6)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 20px rgba(252,126,79,0.4)'">
       －
     </button>
 </div>
@@ -203,35 +226,91 @@ function showConnectedLabel(pos3) {
   label.setAttribute('visible', 'true');
   scene.appendChild(label);
   setTimeout(()=>{scene.removeChild(label);}, 2000);
+  
+  // Activate avatar and play welcome message
+  avatarActive = true;
+  enableMicButton();
+  playWelcomeMessage();
 }
 
+function playWelcomeMessage() {
+  const welcomeText = "Hi, I am your augmented reality friend. I can help you with anytime anywhere in your present through the watch.";
+  switchToTalk();
+  speakAnswer(welcomeText, () => {
+    switchToIdle();
+  });
+}
+
+
+// Global state
+let avatarActive = false;
+let currentAnimation = null;
+let backgroundMusic = null;
 
 const micBtn = document.getElementById('mic');
 const micEmoji = document.getElementById('mic-emoji');
 const statusEl = document.getElementById('status');
 const aiResponseEl = document.getElementById('ai-response');
-const idle = document.getElementById('idle');
-const talk = document.getElementById('talk');
 
-function switchToIdle() {
-  if (idle) {
-    idle.setAttribute('visible', 'true');
-    if (idle.object3D) idle.object3D.visible = true;
+// All animation entities
+const animations = {
+  breathing1: document.getElementById('breathing1'),
+  breathing2: document.getElementById('breathing2'),
+  talking1: document.getElementById('talking1'),
+  talking2: document.getElementById('talking2'),
+  dance1: document.getElementById('dance1'),
+  dance2: document.getElementById('dance2'),
+  dance3: document.getElementById('dance3'),
+  fight1: document.getElementById('fight1'),
+  fight2: document.getElementById('fight2'),
+  happy: document.getElementById('happy'),
+  laughing: document.getElementById('laughing'),
+  sad: document.getElementById('sad'),
+  sitting: document.getElementById('sitting'),
+  sing: document.getElementById('sing')
+};
+
+// Animation manager
+function playAnimation(animName, random = false) {
+  // Hide all animations
+  Object.keys(animations).forEach(key => {
+    const el = animations[key];
+    if (el) {
+      el.setAttribute('visible', 'false');
+      if (el.object3D) el.object3D.visible = false;
+    }
+  });
+  
+  // If random, pick between variants
+  let finalAnim = animName;
+  if (random) {
+    if (animName === 'breathing') {
+      finalAnim = Math.random() > 0.5 ? 'breathing1' : 'breathing2';
+    } else if (animName === 'talking') {
+      finalAnim = Math.random() > 0.5 ? 'talking1' : 'talking2';
+    } else if (animName === 'dance') {
+      const dances = ['dance1', 'dance2', 'dance3'];
+      finalAnim = dances[Math.floor(Math.random() * dances.length)];
+    } else if (animName === 'fight') {
+      finalAnim = Math.random() > 0.5 ? 'fight1' : 'fight2';
+    }
   }
-  if (talk) {
-    talk.setAttribute('visible', 'false');
-    if (talk.object3D) talk.object3D.visible = false;
+  
+  // Show selected animation
+  const el = animations[finalAnim];
+  if (el) {
+    el.setAttribute('visible', 'true');
+    if (el.object3D) el.object3D.visible = true;
+    currentAnimation = finalAnim;
   }
 }
+
+function switchToIdle() {
+  playAnimation('breathing', true);
+}
+
 function switchToTalk() {
-  if (idle) {
-    idle.setAttribute('visible', 'false');
-    if (idle.object3D) idle.object3D.visible = false;
-  }
-  if (talk) {
-    talk.setAttribute('visible', 'true');
-    if (talk.object3D) talk.object3D.visible = true;
-  }
+  playAnimation('talking', true);
 }
 
 function speakWithTalkAnim(text, onEnd) {
@@ -266,14 +345,37 @@ function speakWithTalkAnim(text, onEnd) {
   window.speechSynthesis.speak(msg);
 }
 
+function enableMicButton() {
+  micBtn.style.opacity = '1';
+  micBtn.style.pointerEvents = 'auto';
+  micBtn.disabled = false;
+}
+
+function disableMicButton() {
+  micBtn.style.opacity = '0.5';
+  micBtn.style.pointerEvents = 'none';
+  micBtn.disabled = true;
+}
+
 function startListening() {
+  if (!avatarActive) {
+    const speechOverlay = document.getElementById('speech-overlay');
+    const speechText = document.getElementById('speech-text');
+    speechOverlay.style.display = 'block';
+    speechText.innerText = 'Avatar not active yet. Wait for connection.';
+    setTimeout(() => {
+      speechOverlay.style.display = 'none';
+    }, 2000);
+    return;
+  }
+  
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
     alert('Sorry! Speech recognition not available.');
     return;
   }
+  
   micBtn.classList.add('recording');
   micEmoji.innerText = '🔴';
-  aiResponseEl.innerText = '';
   
   // Show speech overlay
   const speechOverlay = document.getElementById('speech-overlay');
@@ -283,46 +385,44 @@ function startListening() {
 
   const recog = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
   recog.lang = "en-US";
-  recog.interimResults = true; // Enable interim results to show real-time text
+  recog.interimResults = true;
   recog.continuous = false;
   recog.start();
 
   recog.onresult = (e) => {
-    let interimTranscript = '';
-    let finalTranscript = '';
+    let interimText = '';
+    let finalText = '';
     
-    // Process all results
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const transcript = e.results[i][0].transcript;
       if (e.results[i].isFinal) {
-        finalTranscript += transcript + ' ';
+        finalText += transcript + ' ';
       } else {
-        interimTranscript += transcript;
+        interimText += transcript;
       }
     }
     
-    // Show interim results in real-time
-    if (interimTranscript) {
-      speechText.innerText = interimTranscript;
+    // Show what user is saying in real-time
+    if (interimText) {
+      speechText.innerText = interimText;
     }
     
-    // When final result is ready
-    if (finalTranscript) {
-      const finalText = finalTranscript.trim();
-      speechText.innerText = 'You said: ' + finalText;
+    // When user stops speaking, send to AI
+    if (finalText) {
+      const question = finalText.trim();
+      speechText.innerText = 'You: ' + question;
       micEmoji.innerText = '⏳';
       micBtn.classList.remove('recording');
       
-      // Hide overlay after a moment and send to AI
+      // Send to OpenRouter
       setTimeout(() => {
-        speechOverlay.style.display = 'none';
-        askAI(finalText);
-      }, 1000);
+        askAI(question);
+      }, 500);
     }
   };
   
   recog.onerror = (e) => {
-    speechText.innerText = 'Mic error. Try again.';
+    speechText.innerText = 'Error. Try again.';
     micEmoji.innerText = '🎤';
     micBtn.classList.remove('recording');
     setTimeout(() => {
@@ -334,70 +434,208 @@ function startListening() {
     if (micBtn.classList.contains('recording')) {
       micBtn.classList.remove('recording');
       micEmoji.innerText = '🎤';
-      speechOverlay.style.display = 'none';
     }
   };
 }
 
-async function askAI(text) {
+async function askAI(question) {
   const speechOverlay = document.getElementById('speech-overlay');
   const speechText = document.getElementById('speech-text');
+  
+  // Show thinking status
   speechOverlay.style.display = 'block';
   speechText.innerText = 'Thinking...';
-  aiResponseEl.innerText = '';
-  // Make sure avatar is in idle state while waiting for AI response
+  
+  // Avatar stays in idle while waiting
   switchToIdle();
+  
+  // Check for direct commands first
+  const lowerQuestion = question.toLowerCase();
+  
+  if (lowerQuestion.includes('dance')) {
+    handleDance();
+    speechOverlay.style.display = 'none';
+    return;
+  }
+  
+  if (lowerQuestion.includes('sit') || lowerQuestion.includes('sit down')) {
+    playAnimation('sitting');
+    speakAnswer("Okay, I'm sitting down now.");
+    speechOverlay.style.display = 'none';
+    return;
+  }
+  
+  if (lowerQuestion.includes('stand') || lowerQuestion.includes('stand up')) {
+    switchToIdle();
+    speakAnswer("I'm standing up now.");
+    speechOverlay.style.display = 'none';
+    return;
+  }
+  
+  if (lowerQuestion.includes('sing')) {
+    handleSing();
+    speechOverlay.style.display = 'none';
+    return;
+  }
+  
   try {
-    const res = await fetch("/.netlify/functions/ask", {
+    // Send question to local server
+    const res = await fetch("http://127.0.0.1:8000/ask", {
       method: "POST",
       headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({question:text})
+      body: JSON.stringify({question: question})
     });
+    
+    if (!res.ok) {
+      throw new Error(`Server error: ${res.status}`);
+    }
+    
     const data = await res.json();
-    // Hide overlay and start speaking
+    const answer = data.answer || "Sorry, I couldn't get an answer.";
+    const emotion = data.emotion || 'neutral';
+    const command = data.command || null;
+    
+    // Hide overlay
     speechOverlay.style.display = 'none';
-    // Only switch to talk animation when speech actually starts (handled in speakWithTalkAnim)
-    displayTalkWithWords(data.answer);
+    
+    // Handle special commands or emotions
+    if (command === 'not_supported') {
+      const msg = "Our AI is feeding by the developer so some of the basic request can work rest of it will be available soon.";
+      speakAnswer(msg);
+      return;
+    }
+    
+    // Handle emotions
+    handleEmotion(emotion);
+    
+    // Avatar speaks the answer with appropriate animation
+    speakAnswer(answer);
+    
   } catch (e) {
-    speechText.innerText = 'Error connecting to AI!';
+    console.error('Error:', e);
+    speechText.innerText = 'Server not running. Start main.py';
     setTimeout(() => {
       speechOverlay.style.display = 'none';
-    }, 2000);
-    aiResponseEl.innerText = '';
+    }, 3000);
     switchToIdle();
   }
 }
 
-function displayTalkWithWords(answer) {
-  let words = answer.split(/\s+/);
-  aiResponseEl.innerText = '';
-  let cur = 0;
-
-  function speakNextChunk() {
-    if (cur >= words.length) {
-      switchToIdle();
-      return;
-    }
-    // Speak next N (6) words for smoother animation
-    let chunk = words.slice(cur, cur+6).join(' ');
-    aiResponseEl.innerText += chunk + ' ';
-    speakWithTalkAnim(chunk, speakNextChunk);
-    cur += 6;
+function handleDance() {
+  // Play background music (replace with your dance music file)
+  if (!backgroundMusic) {
+    // You can replace this with your own music file
+    backgroundMusic = new Audio('dance_music.mp3'); // Add your dance music file
+    backgroundMusic.loop = true;
+    backgroundMusic.volume = 0.5;
   }
-  // Don't switch to talk here - wait for speech to actually start
-  // Make sure we're in idle state while waiting
-  switchToIdle();
-  speakNextChunk();
+  backgroundMusic.play();
+  
+  // Play random dance animation
+  const dances = ['dance1', 'dance2', 'dance3'];
+  const randomDance = dances[Math.floor(Math.random() * dances.length)];
+  playAnimation(randomDance);
+  
+  speakAnswer("Let's dance!", () => {
+    // Keep dancing for 10 seconds, then stop
+    setTimeout(() => {
+      if (backgroundMusic) {
+        backgroundMusic.pause();
+        backgroundMusic.currentTime = 0;
+      }
+      switchToIdle();
+    }, 10000);
+  });
 }
 
-// Initialize: ensure idle is visible and talk is hidden
+function handleSing() {
+  playAnimation('sing');
+  const song = "La la la, I'm singing a simple song for you. La la la, hope you enjoy it too!";
+  speakAnswer(song, () => {
+    switchToIdle();
+  });
+}
+
+function handleEmotion(emotion) {
+  // Don't override special animations
+  if (['dance1', 'dance2', 'dance3', 'sitting', 'sing'].includes(currentAnimation)) {
+    return;
+  }
+  
+  switch(emotion) {
+    case 'angry':
+      playAnimation('fight', true);
+      break;
+    case 'happy':
+      playAnimation('happy');
+      break;
+    case 'very_happy':
+    case 'extremely_happy':
+      playAnimation('laughing');
+      break;
+    case 'sad':
+      playAnimation('sad');
+      break;
+    default:
+      // Will use talking animation in speakAnswer
+      break;
+  }
+}
+
+function speakAnswer(answer, onEnd = null) {
+  // Use speech synthesis to speak the answer
+  const msg = new SpeechSynthesisUtterance(answer);
+  msg.rate = 0.92;
+  msg.pitch = 1.0;
+  
+  // Switch to talk animation when speech starts (unless already in special animation)
+  msg.onstart = () => {
+    isSpeaking = true;
+    // Only switch to talk if not in a special animation
+    if (!['dance1', 'dance2', 'dance3', 'sitting', 'sing'].includes(currentAnimation)) {
+      switchToTalk();
+    }
+  };
+  
+  // Switch back to idle when speech ends (or use callback)
+  msg.onend = () => {
+    isSpeaking = false;
+    if (onEnd) {
+      onEnd();
+    } else {
+      // Only switch to idle if not in a special animation
+      if (!['dance1', 'dance2', 'dance3', 'sitting', 'sing'].includes(currentAnimation)) {
+        switchToIdle();
+      }
+    }
+  };
+  
+  msg.onerror = () => {
+    isSpeaking = false;
+    if (onEnd) {
+      onEnd();
+    } else {
+      switchToIdle();
+    }
+  };
+  
+  // Cancel any previous speech and start
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(msg);
+}
+
+// Initialize: ensure idle is visible and mic is disabled
 switchToIdle();
+disableMicButton();
 
 // Add periodic check to ensure idle is default when not speaking
 let isSpeaking = false;
 setInterval(() => {
   if (!isSpeaking && window.speechSynthesis && !window.speechSynthesis.speaking) {
-    switchToIdle();
+    // Only switch to idle if not in a special animation
+    if (!['dance1', 'dance2', 'dance3', 'sitting', 'sing'].includes(currentAnimation)) {
+      switchToIdle();
+    }
   }
 }, 500);
 
@@ -458,3 +696,4 @@ setInterval(() => {
 </script>
 </body>
 </html>
+
